@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Client</title>
+</head>
+<body>
+
+    <div id="echo" onclick="wsSendEcho('Привет, бродяга!')">Echo</div>
+    <div id="ping" onclick="wsSendPing()">Ping</div>
+
+    <form id="form-request">
+        <input type="text" name="user_request" maxlength="16" placeholder="Введи сообщение"><br>
+        <button type="submit">Найти</button>
+    </form>
+
+    <div id="dict" onclick="wsDict()">Show Dict</div>
+
+
+<script src="client.js"></script>
+</body>
+</html>
