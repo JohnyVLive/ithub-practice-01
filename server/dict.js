@@ -6,7 +6,7 @@ export function getURLS(search_word) {
     let urls_data = []
     for (let elem of URL_DICT){
         if (elem.word.toLowerCase() === search_word.toLowerCase()){
-            urls_data.push({'id': elem.id, 'url': elem.url})
+            urls_data.push({'id': elem.id, 'link': elem.link})
         }
     }
     return urls_data
