@@ -1,44 +1,58 @@
-const myWs = new WebSocket('ws://localhost:8080');
+const myWs = new WebSocket('ws://localhost:8080')
 
 
-myWs.onopen = function () {
-    console.log('подключился');
+myWs.onopen = async () => {
+    await console.log('подключился')
 };
-myWs.onmessage = function (message) {
-    console.log('Message: %s', message.data);
+
+myWs.onmessage = (message) => {
+    console.log(JSON.parse(message.data))
+
+    // if (typeof message.data == "object"){
+    //     // for await (let elem of message.data){
+    //     //     console.log(elem)
+    //     // }
+    //     console.log(JSON.parse(message.data))
+    // } else {
+    //     console.log('Message: %s', message.data)
+    // }
+
+
+    // const buffers = []
+    // for await (const chunk of message){
+    //     console.log(chunk)
+    //     buffers.push(chunk)
+    // }
+    // const data = Buffer.concat(buffers)
+    // console.log(data)
+
+    // if (typeof message.data == "object"){
+    //     console.log('it is an Object')
+    //     for (let elem of message.data){
+    //         console.log(elem)
+    //     }
+    // } else {
+    //     console.log('Message: %s', message.data)
+    // }
 };
 
 
 function wsSendEcho(value) {
-    myWs.send(JSON.stringify({action: 'ECHO', data: value.toString()}));
+    myWs.send(JSON.stringify({action: 'ECHO', data: value.toString()}))
 }
 
 function wsSendPing() {
-    myWs.send(JSON.stringify({action: 'PING'}));
+    myWs.send(JSON.stringify({action: 'PING'}))
 }
 
-function wsDict() {
-    myWs.send(JSON.stringify({action: 'SHOW_DICT'}));
-
-    // for (let i of dict){
-    //     console.log(i)
-    // }
+function wsDict(word) {
+    myWs.send(JSON.stringify({action: 'SHOW_DICT', data: word.toString()}))
 }
 
-
+// Отправляем запрос ключевого слова на сервер
 const form = document.forms.namedItem("form-request")
 form.addEventListener("submit", function(e) {
-    e.preventDefault();
-    const completedFields = {}
-
-    // for (let i = 0; i < form.elements.length; i++) {
-    //     let el = form.elements[i];
-    //     if (el.name) {
-    //         completedFields[el.name] = false;
-    //     }
-    // }
-
+    e.preventDefault()
     let user_request = form.elements.namedItem("user_request").value
-    wsSendEcho(user_request)
-
+    wsDict(user_request)
 })

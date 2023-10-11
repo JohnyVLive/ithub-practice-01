@@ -9,12 +9,13 @@
     <div id="echo" onclick="wsSendEcho('Привет, бродяга!')">Echo</div>
     <div id="ping" onclick="wsSendPing()">Ping</div>
 
+    <div>Введи ключевое слово для поиска ресурсов</div>
     <form id="form-request">
-        <input type="text" name="user_request" maxlength="16" placeholder="Введи сообщение"><br>
+        <input type="text" name="user_request" maxlength="16" placeholder="Ключевое слово"><br>
         <button type="submit">Найти</button>
     </form>
 
-    <div id="dict" onclick="wsDict()">Show Dict</div>
+<!--    <div id="dict" onclick="wsDict()">Show Dict</div>-->
 
 
 <script src="client.js"></script>
