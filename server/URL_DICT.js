@@ -3,55 +3,55 @@ let URL_DICT = [
         'id': 0,
         'status': 0,
         'word': "Природа",
-        'link': '167200DD-A44F-4845-8D4D-ACCFC180165A.jpeg'
+        'link': 'pic1.jpg'
     },
     {
         'id': 1,
         'status': 0,
         'word': "Природа",
-        'link': '064AEBCB-45EC-4CE7-AB13-C65F10F00B7B.jpeg'
+        'link': 'pic2.jpg'
     },
     {
         'id': 2,
         'status': 0,
         'word': "Кот",
-        'link': '_DM34706.JPG'
+        'link': 'pic3.JPG'
     },
     {
         'id': 3,
         'status': 0,
         'word': "Кот",
-        'link': '1_25.jpg'
+        'link': 'pic4.jpg'
     },
     {
         'id': 4,
         'status': 0,
         'word': "Кот",
-        'link': '%D0%BB%D0%B5%D0%B2%D0%B83_%D0%B0%D0%BB%D0%B5%D0%BA%D1%81.jpg'
+        'link': 'pic5.jpg'
     },
     {
         'id': 5,
         'status': 0,
         'word': "Дерево",
-        'link': '4_30.jpg'
+        'link': 'pic6.jpg'
     },
     {
         'id': 6,
         'status': 0,
         'word': "Дерево",
-        'link': 'B1444207-6EE3-4BA4-97F7-2F9666AE2F63.jpeg'
+        'link': 'pic7.jpeg'
     },
     {
         'id': 7,
         'status': 0,
         'word': "Дерево",
-        'link': 'IMG-20211223-WA0049.jpg'
+        'link': 'pic8.jpg'
     },
     {
         'id': 8,
         'status': 0,
         'word': "Дерево",
-        'link': '%D1%81%D0%B2%D0%B5%D1%82%D0%BB%D1%8F%D1%87%D0%BE%D0%BA4_%D0%B0%D0%BB%D0%B5%D0%BA%D1%81.jpg'
+        'link': 'pic9.jpg'
     }
 ]
 

@@ -1,10 +1,15 @@
 const wsURL = 'ws://localhost:8080'
 const clientURL = window.location.href
 let myWs
-let divContainer
+let contentInfo = {}
+let divForm
+let divRemote
+let divLocal
 
 function init() {
-    divContainer = document.getElementById('divContainer')
+    divForm = document.getElementById('divForm')
+    divRemote = document.getElementById('divRemote')
+    divLocal = document.getElementById('divLocal')
     testWebSocket()
 }
 function testWebSocket() {
@@ -33,78 +38,146 @@ function onOpen(){
 function onError(evt) {
     //TODO убрать вывод в консоль
     console.log(evt)
-    writeMessage('<span style = "color: red;">ERROR:</span> ' + evt);
+    writeMessage(divForm, '<span style = "color: red;">ERROR:</span> ' + evt);
 }
 window.addEventListener("load", init, false);
+
+function saveToLocalStorage(id, data){
+    localStorage.setItem('contentLocalId-' + id, data)
+}
+
+function getFromLocalStorage(id){
+    const data = localStorage.getItem(id)
+    if (data)
+        console.log(data)
+        return data
+}
+
+function drawInLocalContainer(id){
+    const divUrl = document.createElement('div')
+    divUrl.id = 'contentLocalId-' + id
+    divUrl.style.marginTop = '15px'
+
+    const pUrl = document.createElement('p')
+    pUrl.innerHTML = clientURL + '&' + contentInfo.filename
+    divUrl.appendChild(pUrl)
+
+    const buttonShow = document.createElement('button')
+    buttonShow.innerHTML = 'Посмотреть контент'
+    divUrl.appendChild(buttonShow)
+
+    divLocal.appendChild(divUrl)
+
+    clearPage(document.getElementById('contentRemoteId-'+id))
+
+    // Обработка нажатия кнопки
+    buttonShow.addEventListener('click', () => {
+        window.open(getFromLocalStorage('contentLocalId-'+id))
+    })
+}
 
 async function onMessage(message){
     if (typeof(message.data) === 'object'){
         console.log('Файлик летит')
-        const jpegBlob = new Blob([message.data],{type:"application/jpeg"});
-        const url = webkitURL.createObjectURL(jpegBlob);
-        window.open(url);
+        //TODO Нужно написать функцию определения типа файла по расширению?
+        console.log(contentInfo.filename)
+        const jpegFile = new File([message.data], contentInfo.filename, {type:"image/jpeg", lastModified: Date.now()})
+        const url = webkitURL.createObjectURL(jpegFile)
+
+        //TODO Отобразить размер, потоки, статусбар
+        //TODO Если файл скачался, то переместить контент в соответствующий раздел и поменять кнопку
+        drawInLocalContainer(contentInfo.id)
+
+        saveToLocalStorage(contentInfo.id, url)
+
     } else {
         const data = JSON.parse(message.data)
 
-        // setTimeout( () => {
-        //     divContainer.removeChild(divContainer.firstChild)
-        // },1000)
-        divContainer.innerHTML = ''
-        if (data === 'empty') {
-            writeMessage('Нет данных по такому слову. Попробуйте ещё раз.')
-        } else if (data === 'ENOENT'){
-            writeMessage('Файл на сервере не найден.')
-        } else if (data) {
-            // console.log(data)
-            data.forEach((url) => {
-                const divUrl = document.createElement('div')
-                divUrl.id = url.id
-                divUrl.style.marginTop = '15px'
+        //TODO Может быть.. Добавить в каждое сообщение параметр type
+        // message - сообщение для пользователя
+        // error - ошибка
+        // data - данные
+        // urlsInfo - массив ссылок по ключевому слову
+        // contentInfo - информация о передаваемом контекте
+        // ..
+        // и создавать действия под них
+        console.log(`Тип запроса: ${data.type}`)
 
-                //TODO Заменить ссылки на что-то другое
-                const pUrl = document.createElement('p')
-                pUrl.innerHTML = clientURL + url.link
-                // aUrl.setAttribute('target', '_blank')
-                // aUrl.href = url.link
-                // aUrl.innerHTML = `Контент номер ${i}`
-                divUrl.appendChild(pUrl)
-
-                const progressBar = document.createElement('progress')
-                progressBar.style.marginLeft = '15px'
-                progressBar.style.marginRight = '15px'
-                progressBar.value = 0
-                progressBar.max = 100
-                divUrl.appendChild(progressBar)
-
-                const buttonDownload = document.createElement('button')
-                buttonDownload.innerHTML = 'Скачать контент'
-                divUrl.appendChild(buttonDownload)
-
-                divContainer.appendChild(divUrl)
-
-                // Обработка нажатия кнопки
-                buttonDownload.addEventListener('click', () => {
-                    getContent(url)
-                })
-            })
+        switch (data.type){
+            case 'message':
+                clearPage(divRemote)
+                switch (data.data){
+                    case 'empty':
+                        writeMessage(divRemote, 'Нет данных по такому слову. Попробуйте ещё раз.')
+                        break
+                }
+                break
+            case 'urlsInfo':
+                clearPage(divRemote)
+                showResources(data.urls)
+                break
+            case 'contentInfo':
+                contentInfo = data.data
+                break
+            case 'error':
+                switch (data.data){
+                    case 'ENOENT':
+                        let resourceDiv = document.getElementById('contentRemoteId-'+data.id)
+                        console.log(resourceDiv.lastElementChild.id)
+                        if (resourceDiv.lastElementChild.id === 'message')
+                            clearPage(resourceDiv.lastElementChild)
+                        writeMessage(resourceDiv, 'Файл на сервере не найден.')
+                        break
+                }
+                break
         }
     }
 }
-
-function wsSendEcho(value) {
-    myWs.send(JSON.stringify({action: 'ECHO', data: value.toString()}))
+function clearPage(container) {
+    container.innerHTML = ''
 }
 
-function wsSendPing() {
-    myWs.send(JSON.stringify({action: 'PING'}))
+// Показать ресурсы по ключевому слову
+function showResources(urls){
+    urls.forEach((url) => {
+        const divUrl = document.createElement('div')
+        divUrl.id = 'contentRemoteId-' + url.id
+        divUrl.style.marginTop = '15px'
+
+        const pUrl = document.createElement('p')
+        pUrl.innerHTML = clientURL + url.link
+        divUrl.appendChild(pUrl)
+
+        const progressBar = document.createElement('progress')
+        progressBar.style.marginLeft = '15px'
+        progressBar.style.marginRight = '15px'
+        progressBar.value = 0
+        progressBar.max = 100
+        divUrl.appendChild(progressBar)
+        const buttonDownload = document.createElement('button')
+        buttonDownload.innerHTML = 'Скачать контент'
+        divUrl.appendChild(buttonDownload)
+
+        divRemote.appendChild(divUrl)
+
+        // Обработка нажатия кнопки
+        buttonDownload.addEventListener('click', () => {
+            getContent(url)
+        })
+    })
 }
+
+
+
 
 // Функция вывода сообщение для пользователей
-function writeMessage(message) {
+//TODO Можно сделать регулировку стиля взависимости от параметра. Пока все сообщения красные.
+function writeMessage(container, message) {
     const div = document.createElement('div')
+    div.style.color = 'red'
     div.innerHTML = message
     div.id = "message"
-    divContainer.appendChild(div)
+    container.appendChild(div)
 }
 
 function getResources(word) {
@@ -124,7 +197,7 @@ form.addEventListener("submit", function(e) {
     getResources(user_request)
 })
 
-//TODO Функция запроса файла
+//Функция запроса файла
 function getContent(url){
     console.log(`Скачиваем контент по ссылке с id ${url.id}`)
     try {
