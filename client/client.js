@@ -7,6 +7,7 @@ let divRemote
 let divLocal
 
 function init() {
+    localStorage.clear()
     divForm = document.getElementById('divForm')
     divRemote = document.getElementById('divRemote')
     divLocal = document.getElementById('divLocal')
@@ -42,53 +43,20 @@ function onError(evt) {
 }
 window.addEventListener("load", init, false);
 
-function saveToLocalStorage(id, data){
-    localStorage.setItem('contentLocalId-' + id, data)
-}
-
-function getFromLocalStorage(id){
-    const data = localStorage.getItem(id)
-    if (data)
-        console.log(data)
-        return data
-}
-
-function drawInLocalContainer(id){
-    const divUrl = document.createElement('div')
-    divUrl.id = 'contentLocalId-' + id
-    divUrl.style.marginTop = '15px'
-
-    const pUrl = document.createElement('p')
-    pUrl.innerHTML = clientURL + '&' + contentInfo.filename
-    divUrl.appendChild(pUrl)
-
-    const buttonShow = document.createElement('button')
-    buttonShow.innerHTML = 'Посмотреть контент'
-    divUrl.appendChild(buttonShow)
-
-    divLocal.appendChild(divUrl)
-
-    clearPage(document.getElementById('contentRemoteId-'+id))
-
-    // Обработка нажатия кнопки
-    buttonShow.addEventListener('click', () => {
-        window.open(getFromLocalStorage('contentLocalId-'+id))
-    })
-}
-
 async function onMessage(message){
     if (typeof(message.data) === 'object'){
         console.log('Файлик летит')
         //TODO Нужно написать функцию определения типа файла по расширению?
-        console.log(contentInfo.filename)
+        // console.log(contentInfo.filename)
         const jpegFile = new File([message.data], contentInfo.filename, {type:"image/jpeg", lastModified: Date.now()})
         const url = webkitURL.createObjectURL(jpegFile)
+        saveToLocalStorage(contentInfo.id, url)
 
         //TODO Отобразить размер, потоки, статусбар
         //TODO Если файл скачался, то переместить контент в соответствующий раздел и поменять кнопку
         drawInLocalContainer(contentInfo.id)
 
-        saveToLocalStorage(contentInfo.id, url)
+
 
     } else {
         const data = JSON.parse(message.data)
@@ -114,7 +82,7 @@ async function onMessage(message){
                 break
             case 'urlsInfo':
                 clearPage(divRemote)
-                showResources(data.urls)
+                drawRemoteContainer(data.urls)
                 break
             case 'contentInfo':
                 contentInfo = data.data
@@ -133,41 +101,78 @@ async function onMessage(message){
         }
     }
 }
-function clearPage(container) {
-    container.innerHTML = ''
-}
 
-// Показать ресурсы по ключевому слову
-function showResources(urls){
+// Показать ресурсы на сервере по ключевому слову
+function drawRemoteContainer(urls){
+
     urls.forEach((url) => {
-        const divUrl = document.createElement('div')
-        divUrl.id = 'contentRemoteId-' + url.id
-        divUrl.style.marginTop = '15px'
+        // Проверяем, есть ли контент в локальном хранилище. Если нет, показываем.
+        if (!getFromLocalStorage(url.id)){
+            const divUrl = document.createElement('div')
+            divUrl.id = 'contentRemoteId-' + url.id
+            divUrl.style.marginTop = '15px'
 
-        const pUrl = document.createElement('p')
-        pUrl.innerHTML = clientURL + url.link
-        divUrl.appendChild(pUrl)
+            const pUrl = document.createElement('p')
+            pUrl.innerHTML = clientURL + url.link
+            divUrl.appendChild(pUrl)
 
-        const progressBar = document.createElement('progress')
-        progressBar.style.marginLeft = '15px'
-        progressBar.style.marginRight = '15px'
-        progressBar.value = 0
-        progressBar.max = 100
-        divUrl.appendChild(progressBar)
-        const buttonDownload = document.createElement('button')
-        buttonDownload.innerHTML = 'Скачать контент'
-        divUrl.appendChild(buttonDownload)
+            const progressBar = document.createElement('progress')
+            progressBar.style.marginLeft = '15px'
+            progressBar.style.marginRight = '15px'
+            progressBar.value = 0
+            progressBar.max = 100
+            divUrl.appendChild(progressBar)
+            const buttonDownload = document.createElement('button')
+            buttonDownload.innerHTML = 'Скачать контент'
+            divUrl.appendChild(buttonDownload)
 
-        divRemote.appendChild(divUrl)
+            divRemote.appendChild(divUrl)
 
-        // Обработка нажатия кнопки
-        buttonDownload.addEventListener('click', () => {
-            getContent(url)
-        })
+            // Обработка нажатия кнопки
+            buttonDownload.addEventListener('click', () => {
+                getContent(url)
+            })
+        }
     })
 }
 
+// Показать ресурсы в локальном хранилище
+function drawInLocalContainer(id){
+    const divUrl = document.createElement('div')
+    divUrl.id = 'contentLocalId-' + id
+    divUrl.style.marginTop = '15px'
 
+    const pUrl = document.createElement('p')
+    pUrl.innerHTML = clientURL + '&' + contentInfo.filename
+    divUrl.appendChild(pUrl)
+
+    const buttonShow = document.createElement('button')
+    buttonShow.innerHTML = 'Посмотреть контент'
+    divUrl.appendChild(buttonShow)
+
+    divLocal.appendChild(divUrl)
+
+    clearPage(document.getElementById('contentRemoteId-'+id))
+
+    // Обработка нажатия кнопки
+    buttonShow.addEventListener('click', () => {
+        window.open(getFromLocalStorage(id))
+    })
+}
+
+function saveToLocalStorage(id, data){
+    localStorage.setItem('contentLocalId-' + id, data)
+}
+
+function getFromLocalStorage(id){
+    const data = localStorage.getItem('contentLocalId-'+id)
+    if (data)
+        return data
+}
+
+function clearPage(container) {
+    container.innerHTML = ''
+}
 
 
 // Функция вывода сообщение для пользователей
@@ -199,11 +204,9 @@ form.addEventListener("submit", function(e) {
 
 //Функция запроса файла
 function getContent(url){
-    console.log(`Скачиваем контент по ссылке с id ${url.id}`)
     try {
         myWs.send(JSON.stringify({action: 'GET_CONTENT', data: url.id.toString()}))
     } catch (e) {
         writeMessage(e)
     }
-
 }
