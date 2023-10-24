@@ -1,4 +1,4 @@
-const wsURL = 'ws://localhost:8080'
+const wsURL = 'ws://localhost:443/wss'
 const clientURL = window.location.href
 let myWs
 let contentInfo = {}

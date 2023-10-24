@@ -28,11 +28,12 @@ import {readFile} from "fs"
 const clients = {}
 const resourcePath = './resources/'
 
-const port = 8080
-const wss = new WebSocketServer({ port: port })
+const port = 443
+// const wss = new WebSocketServer({ port: port })
+const wss = new WebSocketServer({port: port, path: "/wss"})
 
 wss.on('connection', onConnect);
-    console.log(`Сервер запущен на ${port} порту`)
+    console.log(`Сервер запущен на ${wss.options.port} порту`)
 
 function onConnect(wsClient) {
     const clientId = uuid()
