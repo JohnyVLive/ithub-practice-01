@@ -1,10 +1,16 @@
 const wsURL = 'ws://localhost:443/wss'
 const clientURL = window.location.href
 let myWs
+
 let contentInfo = {}
+let chunks = []
+let buffer = new ArrayBuffer(contentInfo.fileSize)
+let tempSize = 0
+
 let divForm
 let divRemote
 let divLocal
+
 
 function init() {
     localStorage.clear()
@@ -15,6 +21,7 @@ function init() {
 }
 function testWebSocket() {
     myWs = new WebSocket(wsURL)
+    myWs.binaryType = 'arraybuffer'
     myWs.onopen = () => {
         onOpen()
     }
@@ -43,20 +50,46 @@ function onError(evt) {
 }
 window.addEventListener("load", init, false);
 
+
+// Функция обновления статуса текущей загрузки
+function drawDownloadStatus(id, loaded, total){
+    const progressBar = document.getElementById('progress-' + id)
+    const part = loaded * 100 / total
+    const downloaded = total * progressBar.value / 100
+    progressBar.value += part
+
+    const divDownloadStatus = document.getElementById('statusId-' + id)
+    if (divDownloadStatus){
+        divDownloadStatus.innerHTML =
+            `Потоки: 0000 , Скачано: ${(Math.round(downloaded/1024))} из ${Math.round(total/1024)} KB`
+    } else {
+        const divUrl = document.getElementById('contentRemoteId-' + id)
+        const divDownloadStatus = document.createElement('div')
+        divDownloadStatus.id = 'statusId-' + id
+        divDownloadStatus.innerHTML =
+            `Потоки: 0000 , Скачано: ${(Math.round(downloaded/1024))} из ${Math.round(total/1024)} KB`
+        divUrl.appendChild(divDownloadStatus)
+    }
+}
+
+
 async function onMessage(message){
     if (typeof(message.data) === 'object'){
-        console.log('Файлик летит')
-        //TODO Нужно написать функцию определения типа файла по расширению?
-        // console.log(contentInfo.filename)
-        const jpegFile = new File([message.data], contentInfo.filename, {type:"image/jpeg", lastModified: Date.now()})
-        const url = webkitURL.createObjectURL(jpegFile)
-        saveToLocalStorage(contentInfo.id, url)
+        if (message.data.byteLength >= tempSize){
+            chunks.push(message.data)
+            tempSize = message.data.byteLength
+            drawDownloadStatus(contentInfo.id, tempSize, contentInfo.fileSize)
 
-        //TODO Отобразить размер, потоки, статусбар
-        //TODO Если файл скачался, то переместить контент в соответствующий раздел и поменять кнопку
-        drawInLocalContainer(contentInfo.id)
-
-
+        } else {
+            chunks.push(message.data)
+            tempSize = 0
+            console.log('Загрузка завершена')
+            //TODO Нужно написать функцию определения типа файла по расширению?
+            const jpegFile = new File([new Blob(chunks)], contentInfo.filename, {type:"image/jpeg", lastModified: Date.now()})
+            const url = webkitURL.createObjectURL(jpegFile)
+            saveToLocalStorage(contentInfo.id, url)
+            drawInLocalContainer(contentInfo.id)
+        }
 
     } else {
         const data = JSON.parse(message.data)
@@ -87,15 +120,23 @@ async function onMessage(message){
             case 'contentInfo':
                 contentInfo = data.data
                 break
+            case 'file':
+                console.log('Файл получен')
+                chunks = []
+                break
             case 'error':
+                let resourceDiv = document.getElementById('contentRemoteId-'+data.id)
                 switch (data.data){
                     case 'ENOENT':
-                        let resourceDiv = document.getElementById('contentRemoteId-'+data.id)
                         console.log(resourceDiv.lastElementChild.id)
                         if (resourceDiv.lastElementChild.id === 'message')
                             clearPage(resourceDiv.lastElementChild)
                         writeMessage(resourceDiv, 'Файл на сервере не найден.')
                         break
+                    default:
+                        //TODO поправить вывод ошибок
+                        writeMessage(resourceDiv, data.data)
+                        console.log(data.data)
                 }
                 break
         }
@@ -117,6 +158,7 @@ function drawRemoteContainer(urls){
             divUrl.appendChild(pUrl)
 
             const progressBar = document.createElement('progress')
+            progressBar.id = 'progress-' + url.id
             progressBar.style.marginLeft = '15px'
             progressBar.style.marginRight = '15px'
             progressBar.value = 0
@@ -175,7 +217,7 @@ function clearPage(container) {
 }
 
 
-// Функция вывода сообщение для пользователей
+// Функция вывода сообщения для пользователей
 //TODO Можно сделать регулировку стиля взависимости от параметра. Пока все сообщения красные.
 function writeMessage(container, message) {
     const div = document.createElement('div')
@@ -189,9 +231,8 @@ function getResources(word) {
     try {
         myWs.send(JSON.stringify({action: 'GET_URLS', data: word.toString()}))
     } catch (e) {
-        console.log(e)
+        onError(e)
     }
-
 }
 
 // Отправляем запрос ключевого слова на сервер
@@ -207,6 +248,6 @@ function getContent(url){
     try {
         myWs.send(JSON.stringify({action: 'GET_CONTENT', data: url.id.toString()}))
     } catch (e) {
-        writeMessage(e)
+        onError(e)
     }
 }

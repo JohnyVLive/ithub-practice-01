@@ -21,26 +21,34 @@
 //
 // Не забудьте отследить все возможные ошибки, обработав их и представив пользователю в удобном виде.
 
-import {WebSocketServer} from "ws"
-import {v4 as uuid} from "uuid"
-import {getResourceFilename, getURLS} from "./dictProc.js"
-import {readFile} from "fs"
-const clients = {}
-const resourcePath = './resources/'
+// TODO: Реализовать подключения файла параметров для указания путей до ресурсов
 
 const port = 443
+const resourcePath = './resources/'
+
+import {WebSocketServer} from "ws"
+import {Throttle, ThrottleGroup} from "stream-throttle";
+import {v4 as uuid} from "uuid"
+import {getResourceFilename, getURLS} from "./dictProc.js"
+import {readFile, createReadStream, createWriteStream, statSync} from "fs"
+const clients = {}
+
+
+
 // const wss = new WebSocketServer({ port: port })
 const wss = new WebSocketServer({port: port, path: "/wss"})
 
-wss.on('connection', onConnect);
+wss.on('connection', onConnect)
     console.log(`Сервер запущен на ${wss.options.port} порту`)
+
+let tg = new ThrottleGroup({rate: 10240})
 
 function onConnect(wsClient) {
     const clientId = uuid()
     console.log(`Новый пользователь: ${clientId}`)
     // wsClient.send('Привет');
 
-    wsClient.on('close', function() {
+    wsClient.on('close', function () {
         console.log(`Пользователь отключился: ${clientId}`)
     });
 
@@ -63,21 +71,26 @@ function onConnect(wsClient) {
                     })
                     break
                 case 'GET_CONTENT':
-                    // console.log(`Запросил файл с id ссылки ${jsonMessage.data}`)
-
-                    // TODO Задать Потоки и скорость
+                    //TODO Задать Потоки и скорость
+                    //TODO При скачивании контента передавать статус загрузки: размер, кол-во запущенных потоков, прогресс загрузки
                     getContentInfo(jsonMessage.data).then(contentInfo => {
-                        // console.log(contentInfo)
                         wsClient.send(JSON.stringify({type: 'contentInfo', data: contentInfo}))
-                        readFile(resourcePath + contentInfo.filename, (err, data) => {
-                            if (err) {wsClient.send(JSON.stringify({type: 'error', data: err.code, id: contentInfo.id}))}
-                            else wsClient.send(data, {binary: true})
+
+                        const readStream = createReadStream(resourcePath + contentInfo.filename)
+                        readStream.on('data', (chunk) => {
+                            // console.log('----------')
+                            // console.log(chunk)
+                            wsClient.send(chunk, {binary: 'true'})
+                        })
+                        readStream.on('end', () => {
+                            wsClient.send(JSON.stringify({type: 'file'}))
+                            console.log('Передача файла завершена')
                         })
 
                     }).catch(error => {
                         //TODO Отправить ошибку клиенту при отксутствии информации о контенте
                         wsClient.send(JSON.stringify({type: 'error', data: 'empty'}))
-                })
+                    })
 
                     break
                 default:
@@ -89,19 +102,20 @@ function onConnect(wsClient) {
             console.log('Ошибка', error)
         }
     })
+
 }
 
-
-async function getContentInfo(id){
+async function getContentInfo(id) {
     console.log(`Запрошен контент с id ${id}`)
     let data = {}
     data.id = id
     data.filename = getResourceFilename(id)
-    data.fileSize = 1000
+    data.fileSize = statSync(resourcePath + data.filename).size
     const fileSegments = data.filename.split('.')
     data.fileExt = fileSegments[fileSegments.length - 1]
     return data
 }
+
 
 // async function sendFile(filename){
 //     const file = 'resourcePath + filename'
