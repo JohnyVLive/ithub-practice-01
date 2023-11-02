@@ -1,10 +1,11 @@
-const wsURL = 'ws://localhost:443/wss'
+const SERVER_ADDRESS = 'localhost'
+
+const wsURL = `ws://${SERVER_ADDRESS}:443/wss`
 const clientURL = window.location.href
 let myWs
 
 let contentInfo = {}
-let chunks = []
-let buffer = new ArrayBuffer(contentInfo.fileSize)
+let buffer = []
 let tempSize = 0
 
 let divForm
@@ -51,41 +52,19 @@ function onError(evt) {
 window.addEventListener("load", init, false);
 
 
-// Функция обновления статуса текущей загрузки
-function drawDownloadStatus(id, loaded, total){
-    const progressBar = document.getElementById('progress-' + id)
-    const part = loaded * 100 / total
-    const downloaded = total * progressBar.value / 100
-    progressBar.value += part
-
-    const divDownloadStatus = document.getElementById('statusId-' + id)
-    if (divDownloadStatus){
-        divDownloadStatus.innerHTML =
-            `Потоки: 0000 , Скачано: ${(Math.round(downloaded/1024))} из ${Math.round(total/1024)} KB`
-    } else {
-        const divUrl = document.getElementById('contentRemoteId-' + id)
-        const divDownloadStatus = document.createElement('div')
-        divDownloadStatus.id = 'statusId-' + id
-        divDownloadStatus.innerHTML =
-            `Потоки: 0000 , Скачано: ${(Math.round(downloaded/1024))} из ${Math.round(total/1024)} KB`
-        divUrl.appendChild(divDownloadStatus)
-    }
-}
-
-
 async function onMessage(message){
     if (typeof(message.data) === 'object'){
         if (message.data.byteLength >= tempSize){
-            chunks.push(message.data)
+            buffer.push(message.data)
             tempSize = message.data.byteLength
             drawDownloadStatus(contentInfo.id, tempSize, contentInfo.fileSize)
 
         } else {
-            chunks.push(message.data)
+            buffer.push(message.data)
             tempSize = 0
             console.log('Загрузка завершена')
             //TODO Нужно написать функцию определения типа файла по расширению?
-            const jpegFile = new File([new Blob(chunks)], contentInfo.filename, {type:"image/jpeg", lastModified: Date.now()})
+            const jpegFile = new File([new Blob(buffer)], contentInfo.filename, {type:"image/jpeg", lastModified: Date.now()})
             const url = webkitURL.createObjectURL(jpegFile)
             saveToLocalStorage(contentInfo.id, url)
             drawInLocalContainer(contentInfo.id)
@@ -94,14 +73,12 @@ async function onMessage(message){
     } else {
         const data = JSON.parse(message.data)
 
-        //TODO Может быть.. Добавить в каждое сообщение параметр type
+        // Смотрим на параметр type и выполняем соответствующее действие
         // message - сообщение для пользователя
         // error - ошибка
         // data - данные
         // urlsInfo - массив ссылок по ключевому слову
         // contentInfo - информация о передаваемом контекте
-        // ..
-        // и создавать действия под них
         console.log(`Тип запроса: ${data.type}`)
 
         switch (data.type){
@@ -122,7 +99,7 @@ async function onMessage(message){
                 break
             case 'file':
                 console.log('Файл получен')
-                chunks = []
+                buffer = []
                 break
             case 'error':
                 let resourceDiv = document.getElementById('contentRemoteId-'+data.id)
@@ -200,6 +177,27 @@ function drawInLocalContainer(id){
     buttonShow.addEventListener('click', () => {
         window.open(getFromLocalStorage(id))
     })
+}
+
+// Функция обновления статуса текущей загрузки
+function drawDownloadStatus(id, loaded, total){
+    const progressBar = document.getElementById('progress-' + id)
+    const part = loaded * 100 / total
+    const downloaded = total * progressBar.value / 100
+    progressBar.value += part
+
+    const divDownloadStatus = document.getElementById('statusId-' + id)
+    if (divDownloadStatus){
+        divDownloadStatus.innerHTML =
+            `Скачано: ${(Math.round(downloaded/1024))} из ${Math.round(total/1024)} KB`
+    } else {
+        const divUrl = document.getElementById('contentRemoteId-' + id)
+        const divDownloadStatus = document.createElement('div')
+        divDownloadStatus.id = 'statusId-' + id
+        divDownloadStatus.innerHTML =
+            `Скачано: ${(Math.round(downloaded/1024))} из ${Math.round(total/1024)} KB`
+        divUrl.appendChild(divDownloadStatus)
+    }
 }
 
 function saveToLocalStorage(id, data){
